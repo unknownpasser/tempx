@@ -32,8 +32,7 @@ cat>/usr/local/etc/v2ray/config.json<<EOF
                 "clients":
                 [
                     {
-                        "id": "ad6d712f-770b-4f97-af7c-8b2cfd207b0a",
-                        "alterId": 0
+                        "id": "ad6d712f-770b-4f97-af7c-8b2cfd207b0a"
                     }
                 ]
             }
