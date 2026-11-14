@@ -4,11 +4,11 @@ ufw allow 22
 ufw allow 443
 ufw enable
 
-output=$(xray x25519 2>&1 | tr -d '/r')
+output=$(xray x25519 2>&1 | tr -d '\r')
 private_key=$(echo "${output}" | grep -Ei '^private ?key:' | sed 's/^[^:]*: *//')
 password=$(echo "${output}" | grep -E '^(Password|Public key)' | sed 's/^[^:]*: *//')
 
-uuid=$(xray uuid 2>&1 | tr -d '/r' | grep -Eo '[0-9a-fA-F-]{36}' | head -n 1)
+uuid=$(xray uuid 2>&1 | tr -d '\r' | grep -Eo '[0-9a-fA-F-]{36}' | head -n 1)
 
 cat>/usr/local/etc/xray/config.json<<EOF
 {
