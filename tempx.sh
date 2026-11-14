@@ -1,55 +1,88 @@
-curl -O https://raw.githubusercontent.com/v2fly/fhs-install-v2ray/master/install-release.sh
-bash install-release.sh
-ufw allow 28080
-cat>/usr/local/etc/v2ray/config.json<<EOF
+bash -c "$(curl -L https://github.com/XTLS/Xray-install/raw/main/install-release.sh)" @ install
+
+ufw allow 22
+ufw allow 443
+ufw enable
+
+output=$(xray x25519 2>&1 | tr -d '/r')
+private_key=$(echo "${output}" | grep -Ei '^private ?key:' | sed 's/^[^:]*: *//')
+password=$(echo "${output}" | grep -E '^(Password|Public key)' | sed 's/^[^:]*: *//')
+
+uuid=$(xray uuid 2>&1 | tr -d '/r' | grep -Eo '[0-9a-fA-F-]{36}' | head -n 1)
+
+cat>/usr/local/etc/xray/config.json<<EOF
 {
-    "log":
+  "log": {
+    "loglevel": "warning",
+    "access": "/var/log/xray/access.log",
+    "error": "/var/log/xray/error.log"
+  },
+
+  "inbounds": [
     {
-        "loglevel": "warning"
-    },
-    "routing":
+      "port": 443,
+      "protocol": "vless",
+      "settings": {
+        "users": [
+          {
+            "id": "$uuid",
+            "flow": "xtls-rprx-vision"
+          }
+        ],
+        "decryption": "none"
+      },
+      "sniffing": {
+        "enabled": true,
+        "destOverride": ["http", "tls", "quic"]
+      },
+      "streamSettings": {
+        "method": "raw",
+        "security": "reality",
+        "realitySettings": {
+          "target": "www.microsoft.com:443",
+          "serverNames": ["www.microsoft.com"],
+          "privateKey": "$private_key",
+          "shortIds": ["156318"]
+        }
+      }
+    }
+  ],
+
+  "outbounds": [
     {
-        "domainStrategy": "AsIs",
-        "rules":
-        [
-            {
-                "ip":
-                [
-                    "geoip:private"
-                ],
-                "outboundTag": "blocked",
-                "type": "field"
-            }
-        ]
+      "tag": "direct",
+      "protocol": "freedom",
+      "settings": {}
     },
-    "inbounds":
-    [
-        {
-            "port": 28080,
-            "protocol": "vmess",
-            "settings":
-            {
-                "clients":
-                [
-                    {
-                        "id": "ad6d712f-770b-4f97-af7c-8b2cfd207b0a"
-                    }
-                ]
-            }
-        }
-    ],
-    "outbounds":
-    [
-        {
-            "protocol": "freedom"
-        },
-        {
-            "protocol": "blackhole",
-            "tag": "blocked"
-        }
+    {
+      "tag": "block",
+      "protocol": "blackhole",
+      "settings": {}
+    }
+  ],
+
+  "routing": {
+    "domainStrategy": "AsIs",
+    "rules": [
+      {
+        "ip": ["geoip:private"],
+        "outboundTag": "block"
+      },
+      {
+        "ip": ["geoip:cn"],
+        "outboundTag": "block"
+      },
+      {
+        "domain": ["geosite:cn"],
+        "outboundTag": "block"
+      }
     ]
+  }
 }
 EOF
-systemctl start v2ray
+systemctl start xray
 
-echo 'Ok'
+echo "password=${password}"
+echo "uuid=${uuid}"
+
+echo "OK"
